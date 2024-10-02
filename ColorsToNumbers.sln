@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35027.167
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ColorsToNumbers", "ColorsToNumbers.csproj", "{5CF21D0B-2A59-4FE6-963F-58CD37D342B4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5CF21D0B-2A59-4FE6-963F-58CD37D342B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CF21D0B-2A59-4FE6-963F-58CD37D342B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CF21D0B-2A59-4FE6-963F-58CD37D342B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5CF21D0B-2A59-4FE6-963F-58CD37D342B4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {896C752D-E1A8-4832-9A14-E53D51E9E5AB}
+	EndGlobalSection
+EndGlobal

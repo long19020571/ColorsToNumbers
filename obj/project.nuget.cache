@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "37G3eQoQkjU=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\NguyenVietLong\\Desktop\\Works\\_Github\\ColorsToNumbers\\ColorsToNumbers.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\NguyenVietLong\\.nuget\\packages\\nettopologysuite\\2.5.0\\nettopologysuite.2.5.0.nupkg.sha512",
+    "C:\\Users\\NguyenVietLong\\.nuget\\packages\\system.memory\\4.5.4\\system.memory.4.5.4.nupkg.sha512"
+  ],
+  "logs": []
+}
