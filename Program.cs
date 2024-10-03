@@ -57,7 +57,17 @@ namespace o_w1
         }
         public static bool CompareColor(RGBColor color1, RGBColor color2)
         {
-            return color1.Red == color2.Red & color1.Green == color2.Green & color1.Blue == color2.Blue;
+            return color1.Red == color2.Red && color1.Green == color2.Green && color1.Blue == color2.Blue;
+        }
+        public static Coordinate BeziverFunction(double t, PathPoint P0, PathPoint P3)
+        {
+            if (t < 0 || t > 1)
+                return null;
+            double t2 = t * t, t3 = t2 * t;
+            double
+            x = P0.Anchor[0] * (1 - 3 * t + 3 * t2 - t3) + P0.RightDirection[0] * (3 * t - 6 * t2 + 3 * t3) + P3.LeftDirection[0] * (3 * t2 - 3 * t3) + P3.Anchor[0] * t3,
+            y = P0.Anchor[1] * (1 - 3 * t + 3 * t2 - t3) + P0.RightDirection[1] * (3 * t - 6 * t2 + 3 * t3) + P3.LeftDirection[1] * (3 * t2 - 3 * t3) + P3.Anchor[1] * t3;
+            return new Coordinate(x, y);
         }
         public static CoordinateList fromAiBeziverCurve(in PathItem pItem)
         {
@@ -80,7 +90,6 @@ namespace o_w1
         }
         public static Polygon from(in CompoundPathItem cpItem)
         {
-            Console.WriteLine("\tStart : from");
             int c = cpItem.PathItems.Count;
             List<LinearRing> rings = new List<LinearRing>();
             for (int k = 1; k <= cpItem.PathItems.Count; ++k)
@@ -91,42 +100,51 @@ namespace o_w1
             LinearRing outside = rings.MaxBy(ring => ring.Envelope.Area);
             rings.Remove(outside);
 
-            Console.WriteLine("\tEnd : from");
             return _geometryFactory.CreatePolygon(outside, rings.ToArray());
         }
         public static Polygon from(in PathItem cpItem)
         {
             return _geometryFactory.CreatePolygon(fromAiBeziverCurve(cpItem).ToArray());
         }
-        public static Coordinate BeziverFunction(double t, PathPoint P0, PathPoint P3)
+        public static bool reshape(ref Polygon plg, double SCALE)
         {
-            if (t < 0 || t > 1)
-                return null;
-            double t2 = t * t, t3 = t2 * t;
-            double
-            x = P0.Anchor[0] * (1 - 3 * t + 3 * t2 - t3) + P0.RightDirection[0] * (3 * t - 6 * t2 + 3 * t3) + P3.LeftDirection[0] * (3 * t2 - 3 * t3) + P3.Anchor[0] * t3,
-            y = P0.Anchor[1] * (1 - 3 * t + 3 * t2 - t3) + P0.RightDirection[1] * (3 * t - 6 * t2 + 3 * t3) + P3.LeftDirection[1] * (3 * t2 - 3 * t3) + P3.Anchor[1] * t3;
-            return new Coordinate(x, y);
-        }
-        public static void resizeItem(GroupItem gItem, double scale)
-        {
-            double m_x = gItem.Position[0] + gItem.Width / 2, m_y = gItem.Position[1] - gItem.Height / 2;
+            if (!plg.IsRectangle)
+                return false;
+            double midX = (plg.Coordinates[2].X + plg.Coordinates[0].X) / 2,
+                midY = (plg.Coordinates[2].Y + plg.Coordinates[0].Y) / 2,
+                oldWidth2 = SCALE* Math.Abs(plg.Coordinates[2].X - plg.Coordinates[0].X)/2,
+                oldHeight2 = SCALE * Math.Abs(plg.Coordinates[2].Y - plg.Coordinates[0].Y)/2;
 
-            gItem.Height = gItem.Height * scale;
-            gItem.Width = gItem.Width * scale;
-
-            object[] p =
+            Coordinate[] newPlg =
             {
-                m_x - gItem.Width/2,
-                m_y - gItem.Height/2
+                new Coordinate(midX - oldWidth2,midY + oldHeight2),
+                new Coordinate(midX + oldWidth2,midY + oldHeight2),
+                new Coordinate(midX + oldWidth2,midY - oldHeight2),
+                new Coordinate(midX - oldWidth2,midY - oldHeight2),
+                new Coordinate(midX - oldWidth2,midY + oldHeight2),
             };
-            gItem.Position = p;
+            plg = _geometryFactory.CreatePolygon(newPlg);
+
+            return true;
         }
-        public static void adjust(GroupItem gtf, Polygon plg, double SCALE, Point iterior)
+        public static bool reshape(ref GroupItem gi, double SCALE)
         {
-            while (true)
+            if (gi == null)
+                return false;
+            double midX = gi.Position[0] + gi.Width / 2,
+                midY = gi.Position[1] - gi.Height / 2;
+            gi.Width = gi.Width * SCALE; gi.Height = gi.Height * SCALE;
+            gi.Position = new object[]
             {
-                Coordinate[] controlBound =
+                midX - gi.Width / 2,
+                midY + gi.Height / 2,
+            };
+
+            return true;
+        }
+        public static void adjust(GroupItem gtf, Polygon plg, double SCALE)
+        {
+            Coordinate[] controlBound =
                 {
                         new Coordinate(gtf.ControlBounds[0], gtf.ControlBounds[1]),
                         new Coordinate(gtf.ControlBounds[0], gtf.ControlBounds[3]),
@@ -134,24 +152,77 @@ namespace o_w1
                         new Coordinate(gtf.ControlBounds[2], gtf.ControlBounds[1]),
                         new Coordinate(gtf.ControlBounds[0], gtf.ControlBounds[1])
                     };
-                Polygon num = _geometryFactory.CreatePolygon(controlBound);
+            Polygon num = _geometryFactory.CreatePolygon(controlBound);
+            double scl = SCALE;
+            while (true)
+            {
                 if (plg.Contains(num))
                 {
                     break;
                 }
                 else
                 {
-                    gtf.Width = gtf.Width * SCALE;
-                    gtf.Height = gtf.Height * SCALE;
-
-                    object[] tfP2 = {
-                            iterior.X - gtf.Width / 2,
-                            iterior.Y + gtf.Height / 2
-                        };
-
-                    gtf.Position = tfP2;
+                    reshape(ref num, SCALE);
+                    scl = scl * SCALE;
                 }
             }
+            reshape(ref gtf, scl);
+        }
+        public static void adjust(GroupItem gtf, Polygon plg, Point iterior)
+        {
+        }
+        public static void adjust(GroupItem gtf, Polygon plg, int cWidthGrid, int cHeightGrid)
+        {
+            Envelope eplg = plg.EnvelopeInternal;
+            double deltaX = eplg.Width/ cWidthGrid,
+                deltaY = eplg.Height/ cHeightGrid;
+
+            BitArray[] grid = new BitArray[cWidthGrid];
+            for (int i = 0; i < cWidthGrid; ++i)
+            {
+                grid[i] = new BitArray(cHeightGrid, false);
+            }
+            for (int w = 0; w < cWidthGrid; w++)
+            {
+                for (int h = 0; h < cHeightGrid; h++)
+                {
+                    Point p = new Point(eplg.MinX + w*deltaX, eplg.MinY + h*deltaY);
+                    if (plg.Contains(p))
+                    {
+                        grid[w][h] = true;
+                    }
+                }
+            }
+            //find Fit rectangle
+
+        }
+        public static void findFit(BitArray[] bitArray, int width, int height, List<int> fitX, List<int> fitY)
+        {
+            int i, ii, j, jj;
+            bool check;
+            for(i = 0; i < bitArray.Length -width; i++)
+            {
+                for(j = 0; j < bitArray[i].Length -width; j++)
+                {
+                    check = true;
+                    for(ii = 0; ii < width & check; ii++)
+                    {
+                        for(jj = 0; jj < height & check; jj++)
+                        {
+                            if (!bitArray[ii][jj])
+                            {
+                                check = false;
+                            }
+                        }
+                    }
+                    if(check)
+                    {
+                        fitX.Add(i);
+                        fitY.Add(j);
+                    }
+                }
+            }
+
         }
         public static void Main(string[] argvs)
         {
@@ -163,10 +234,16 @@ namespace o_w1
 
             List<CompoundPathItem> cpaths = new List<CompoundPathItem>();
             foreach (CompoundPathItem compoundPathItem in docRef.CompoundPathItems)
-                cpaths.Add(compoundPathItem);
+            {
+                if (compoundPathItem.PathItems[1].Filled)
+                    cpaths.Add(compoundPathItem);
+            }
             List<PathItem> paths = new List<PathItem>();
             foreach (PathItem pathItem in docRef.PathItems)
-                paths.Add(pathItem);
+            {
+                if (pathItem.Filled)
+                    paths.Add(pathItem);
+            }
             ConcurrentBag<PathItem> excludePathItems = new ConcurrentBag<PathItem>();
 
             Parallel.ForEach(cpaths, cpItem =>
@@ -243,6 +320,7 @@ namespace o_w1
             paths = null;
             cpaths = null;
             excludePathItems = null;
+            Console.WriteLine(watch.Elapsed.TotalSeconds);
             Console.WriteLine("Numbering polygon");
 
             Parallel.ForEach(polygons, plg =>
@@ -261,7 +339,7 @@ namespace o_w1
 
                 gtf.Position = gtfP;
 
-                adjust(gtf, plg.polygon, 0.9, t);
+                adjust(gtf, plg.polygon, SCALE);
                 //
                 //
 
@@ -297,68 +375,6 @@ namespace o_w1
             Console.WriteLine(watch.Elapsed.TotalSeconds);
 
             return;
-            //gtf.Position = tfP;
-
-
-            //int count = docRef.PathItems.Count;
-            //List<PathItem> pList = new List<PathItem>();
-            //foreach (PathItem item in docRef.PathItems)
-            //{
-            //    pList.Add(item);
-            //}
-
-            //for (int i = 0; i < pList.Count; i++)
-            //{
-
-            //    PathItem p = pList[i];
-            //    Polygon plg = gF.CreatePolygon(fromAiBeziverCurve(p).ToArray());
-            //    Point iterior = plg.InteriorPoint;
-
-            //    Console.WriteLine("Setting :" + i + " at: " + iterior.X + ", "+ iterior.Y);
-
-            //    TextFrame tf = docRef.TextFrames.Add();
-            //    tf.Contents = i.ToString();
-            //    GroupItem gtf = tf.CreateOutline();
-
-            //    object[] tfP =
-            //    {
-            //        iterior.X - gtf.Width/2,
-            //        iterior.Y + gtf.Height/2
-            //    };
-
-            //    gtf.Position = tfP;
-
-            //    while (true)
-            //    {
-            //        Console.WriteLine("\tPositining :" + i + " Width:" + gtf.Width);
-            //        Coordinate[] controlBound =
-            //        {
-            //            new Coordinate(gtf.ControlBounds[0], gtf.ControlBounds[1]),
-            //            new Coordinate(gtf.ControlBounds[0], gtf.ControlBounds[3]),
-            //            new Coordinate(gtf.ControlBounds[2], gtf.ControlBounds[3]),
-            //            new Coordinate(gtf.ControlBounds[2], gtf.ControlBounds[1]),
-            //            new Coordinate(gtf.ControlBounds[0], gtf.ControlBounds[1])
-            //        };
-            //        Polygon num = gF.CreatePolygon(controlBound);
-            //        if (plg.Contains(num))
-            //        {
-            //            break;
-            //        }
-            //        else
-            //        {
-            //            gtf.Width = gtf.Width * SCALE;
-            //            gtf.Height = gtf.Height * SCALE;
-
-            //            object[] tfP2 = {
-            //                iterior.X - gtf.Width / 2,
-            //                iterior.Y + gtf.Height / 2
-            //            };
-
-            //            gtf.Position = tfP2;
-            //        }
-            //    }
-            //}
-
 
 
         }
