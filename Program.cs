@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -7,6 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Illustrator;
 using NetTopologySuite.Geometries;
+using NetTopologySuite.Index.HPRtree;
+using NetTopologySuite.Shape;
 
 namespace o_w1
 {
@@ -23,6 +26,15 @@ namespace o_w1
             this.color = color;
         }
     }
+    class PolygonInfo
+    {
+        public Polygon polygon;
+        public int index;
+        public PolygonInfo(Polygon polygon)
+        {
+            this.polygon = polygon;
+        }
+    }
     internal class ColorsToNumber2
     {
         #region property
@@ -30,19 +42,9 @@ namespace o_w1
         private static GeometryFactory _geometryFactory = new GeometryFactory();
         private static Application appRef = new Application();
 
-        private static List<ColorIndex> colors = new List<ColorIndex>();
-        private static readonly object _colors_lock = new object();
+        private static ConcurrentBag<ColorIndex> colors = new ConcurrentBag<ColorIndex>();
 
-        private static List<PathItem> piList = new List<PathItem>();
-        private static readonly object _piList_lock = new object();
-
-        private static List<PathItem> excludePathItems = new List<PathItem>();
-
-        private static List<Polygon> polygons = new List<Polygon>();
-        private static readonly object _polygons_lock = new object();
-
-        private static List<int> plgIndex = new List<int>();
-        private static readonly object _plgIndex_lock = new object();
+        private static ConcurrentBag<PolygonInfo> polygons = new ConcurrentBag<PolygonInfo>();
         #endregion
         public void openApp() { }
         private static ColorIndex find(RGBColor color)
@@ -159,76 +161,96 @@ namespace o_w1
             Application appRef = new Application();
             Document docRef = appRef.ActiveDocument;
 
+            List<CompoundPathItem> cpaths = new List<CompoundPathItem>();
+            foreach (CompoundPathItem compoundPathItem in docRef.CompoundPathItems)
+                cpaths.Add(compoundPathItem);
+            List<PathItem> paths = new List<PathItem>();
+            foreach (PathItem pathItem in docRef.PathItems)
+                paths.Add(pathItem);
+            ConcurrentBag<PathItem> excludePathItems = new ConcurrentBag<PathItem>();
 
-
-            foreach (CompoundPathItem cpItem in docRef.CompoundPathItems)
+            Parallel.ForEach(cpaths, cpItem =>
             {
                 Console.WriteLine("CompoundPathItem:" + cpItem.Name + "-" + cpItem.Uuid);
                 RGBColor rc = null;
+                bool catchE = false;
                 try
                 {
                     rc = cpItem.PathItems[1].FillColor;
                 }
                 catch
                 {
-                    continue;
+                    catchE = true;
                 }
-                polygons.Add(from(cpItem));
-                ColorIndex ci = find(rc);
-                if (ci == null)
+                if (!catchE)
                 {
-                    ci = new ColorIndex(rc);
-                    colors.Add(ci);
-                }
-                plgIndex.Add(ci.index);
-
-                foreach (PathItem item in cpItem.PathItems)
-                {
-                    excludePathItems.Add(item);
-                    Console.WriteLine("~PathItem:" + item.Name + "-" + item.Uuid);
-                }
-            }
-            foreach (PathItem pItem in docRef.PathItems)
-            {
-                if (!excludePathItems.Contains(pItem))
-                {
-                    Console.WriteLine("PathItem:" + pItem.Name + "-" + pItem.Uuid);
-
-                    RGBColor rc = null;
-                    try
-                    {
-                        rc = pItem.FillColor;
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-
-                    polygons.Add(from(pItem));
+                    PolygonInfo pinfo = new PolygonInfo(from(cpItem));
                     ColorIndex ci = find(rc);
                     if (ci == null)
                     {
                         ci = new ColorIndex(rc);
                         colors.Add(ci);
                     }
-                    plgIndex.Add(ci.index);
+                    pinfo.index = ci.index;
+                    polygons.Add(pinfo);
+
+                    foreach (PathItem item in cpItem.PathItems)
+                    {
+                        excludePathItems.Add(item);
+                        Console.WriteLine("~PathItem:" + item.Name + "-" + item.Uuid);
+                    }
+                } else
+                {
+                    Console.WriteLine("\tThrow Excepion in " + cpItem.Name + "-" + cpItem.Uuid);
                 }
-            }
-            if (polygons.Count != plgIndex.Count)
+            });
+            Parallel.ForEach(paths, pItem =>
             {
-                Console.WriteLine("Error");
-                return;
-            }
-            else
+                if (!excludePathItems.Contains(pItem))
+                {
+                    Console.WriteLine("PathItem:" + pItem.Name + "-" + pItem.Uuid);
+
+                    RGBColor rc = null;
+                    bool catchE = false;
+                    try
+                    {
+                        rc = pItem.FillColor;
+                    }
+                    catch
+                    {
+                        catchE = true;
+                    }
+                    if (!catchE)
+                    {
+                        Console.WriteLine("\t- Adding ...");
+                        PolygonInfo pinfo = new PolygonInfo(from(pItem));
+                        ColorIndex ci = find(rc);
+                        if (ci == null)
+                        {
+                            ci = new ColorIndex(rc);
+                            colors.Add(ci);
+                        }
+                        pinfo.index = ci.index;
+                        polygons.Add(pinfo);
+                    } else
+                    {
+
+                        Console.WriteLine("\tThrow Excepion in " + pItem.Name + "-" + pItem.Uuid);
+                    }
+                }
+            });
+
+            paths = null;
+            cpaths = null;
+            excludePathItems = null;
+            Console.WriteLine("Numbering polygon");
+
+            Parallel.ForEach(polygons, plg =>
             {
-                Console.WriteLine("OK:" + polygons.Count + "-" + plgIndex.Count);
-            }
-            for (int i = 0; i < polygons.Count; i++)
-            {
-                Point t = polygons[i].InteriorPoint;
+                Point t = plg.polygon.InteriorPoint;
 
                 TextFrame tf = docRef.TextFrames.Add();
-                tf.Contents = plgIndex[i].ToString();
+                tf.Contents = plg.index.ToString();
                 GroupItem gtf = tf.CreateOutline();
 
                 object[] gtfP =
@@ -239,11 +261,11 @@ namespace o_w1
 
                 gtf.Position = gtfP;
 
-                adjust(gtf, polygons[i], 0.9, t);
+                adjust(gtf, plg.polygon, 0.9, t);
                 //
                 //
 
-            }
+            });
 
             appRef.ExecuteMenuCommand("Fit Artboard to artwork bounds");
 
@@ -252,7 +274,7 @@ namespace o_w1
             for (int i = 0; i < colors.Count; i++)
             {
                 PathItem p = docRef.PathItems.Rectangle(0, 0, 30, 30);
-                p.FillColor = colors[i].color;
+                p.FillColor = colors.ElementAt(i).color;
                 object[] ps =
                 {
                     artX,
@@ -260,7 +282,7 @@ namespace o_w1
                 };
                 p.Position = ps;
                 TextFrame tf = docRef.TextFrames.Add();
-                tf.Contents = colors[i].index.ToString();
+                tf.Contents = colors.ElementAt(i).index.ToString();
                 GroupItem gtf = tf.CreateOutline();
 
                 object[] gtfs =
