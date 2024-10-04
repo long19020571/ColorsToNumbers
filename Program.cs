@@ -1,15 +1,7 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using Illustrator;
 using NetTopologySuite.Geometries;
-using NetTopologySuite.Index.HPRtree;
-using NetTopologySuite.Shape;
 
 namespace o_w1
 {
@@ -38,7 +30,7 @@ namespace o_w1
     internal class ColorsToNumber2
     {
         #region property
-        private const int COUNT_CURVE_POINT = 20;
+        private const int COUNT_CURVE_POINT = 5;
         private static GeometryFactory _geometryFactory = new GeometryFactory();
         private static Application appRef = new Application();
 
@@ -49,20 +41,26 @@ namespace o_w1
         public void openApp() { }
         private static ColorIndex find(RGBColor color)
         {
-            foreach (ColorIndex c in colors)
-            {
-                if (CompareColor(color, c.color)) return c;
-            }
+            for (int i = 0; i < colors.Count; i++)
+                if (CompareColor(color, colors.ElementAt(i).color))
+                    return colors.ElementAt(i);
             return null;
         }
         public static bool CompareColor(RGBColor color1, RGBColor color2)
         {
             return color1.Red == color2.Red && color1.Green == color2.Green && color1.Blue == color2.Blue;
         }
+        public static int convertRGB(RGBColor color)
+        {
+            int rgb = (int)color.Red;
+            rgb = (rgb << 8) + (int)color.Green;
+            rgb = (rgb << 8) + (int)color.Blue;
+            return rgb;
+        }
         public static Coordinate BeziverFunction(double t, PathPoint P0, PathPoint P3)
         {
-            if (t < 0 || t > 1)
-                return null;
+            //if (t < 0 || t > 1)
+            //    return null;
             double t2 = t * t, t3 = t2 * t;
             double
             x = P0.Anchor[0] * (1 - 3 * t + 3 * t2 - t3) + P0.RightDirection[0] * (3 * t - 6 * t2 + 3 * t3) + P3.LeftDirection[0] * (3 * t2 - 3 * t3) + P3.Anchor[0] * t3,
@@ -79,7 +77,7 @@ namespace o_w1
                 PathPoint p1 = pItem.PathPoints[i],
                     p3 = pItem.PathPoints[(i + 1) < c ? (i + 1) : 1];
 
-                for (double t = 0; t <= 1; t += delta)
+                for (double t = 0; t < 1; t += delta)
                 {
                     result.Add(BeziverFunction(t, p1, p3));
                 }
@@ -108,12 +106,12 @@ namespace o_w1
         }
         public static bool reshape(ref Polygon plg, double SCALE)
         {
-            if (!plg.IsRectangle)
-                return false;
+            //if (!plg.IsRectangle)
+            //    return false;
             double midX = (plg.Coordinates[2].X + plg.Coordinates[0].X) / 2,
-                midY = (plg.Coordinates[2].Y + plg.Coordinates[0].Y) / 2,
-                oldWidth2 = SCALE* Math.Abs(plg.Coordinates[2].X - plg.Coordinates[0].X)/2,
-                oldHeight2 = SCALE * Math.Abs(plg.Coordinates[2].Y - plg.Coordinates[0].Y)/2;
+                   midY = (plg.Coordinates[2].Y + plg.Coordinates[0].Y) / 2,
+                   oldWidth2  = SCALE* Math.Abs(plg.Coordinates[2].X - plg.Coordinates[0].X)/2,
+                   oldHeight2 = SCALE * Math.Abs(plg.Coordinates[2].Y - plg.Coordinates[0].Y)/2;
 
             Coordinate[] newPlg =
             {
@@ -129,8 +127,8 @@ namespace o_w1
         }
         public static bool reshape(ref GroupItem gi, double SCALE)
         {
-            if (gi == null)
-                return false;
+            //if (gi == null)
+            //    return false;
             double midX = gi.Position[0] + gi.Width / 2,
                 midY = gi.Position[1] - gi.Height / 2;
             gi.Width = gi.Width * SCALE; gi.Height = gi.Height * SCALE;
@@ -153,7 +151,7 @@ namespace o_w1
                         new Coordinate(gtf.ControlBounds[0], gtf.ControlBounds[1])
                     };
             Polygon num = _geometryFactory.CreatePolygon(controlBound);
-            double scl = SCALE;
+            double scl = 1;
             while (true)
             {
                 if (plg.Contains(num))
@@ -228,7 +226,6 @@ namespace o_w1
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
             double SCALE = 0.9;
-
             Application appRef = new Application();
             Document docRef = appRef.ActiveDocument;
 
@@ -244,82 +241,51 @@ namespace o_w1
                 if (pathItem.Filled)
                     paths.Add(pathItem);
             }
-            ConcurrentBag<PathItem> excludePathItems = new ConcurrentBag<PathItem>();
+            ConcurrentDictionary<int,PathItem> excludePathItems = new ConcurrentDictionary<int, PathItem>();
 
             Parallel.ForEach(cpaths, cpItem =>
             {
                 Console.WriteLine("CompoundPathItem:" + cpItem.Name + "-" + cpItem.Uuid);
-                RGBColor rc = null;
-                bool catchE = false;
-                try
+                RGBColor rc = cpItem.PathItems[1].FillColor;
+                
+                PolygonInfo pinfo = new PolygonInfo(from(cpItem));
+                ColorIndex ci = find(rc);
+                if (ci is null)
                 {
-                    rc = cpItem.PathItems[1].FillColor;
+                    ci = new ColorIndex(rc);
+                    colors.Add(ci);
                 }
-                catch
-                {
-                    catchE = true;
-                }
-                if (!catchE)
-                {
-                    PolygonInfo pinfo = new PolygonInfo(from(cpItem));
-                    ColorIndex ci = find(rc);
-                    if (ci == null)
-                    {
-                        ci = new ColorIndex(rc);
-                        colors.Add(ci);
-                    }
-                    pinfo.index = ci.index;
-                    polygons.Add(pinfo);
+                pinfo.index = ci.index;
+                polygons.Add(pinfo);
 
-                    foreach (PathItem item in cpItem.PathItems)
-                    {
-                        excludePathItems.Add(item);
-                        Console.WriteLine("~PathItem:" + item.Name + "-" + item.Uuid);
-                    }
-                } else
+                foreach (PathItem item in cpItem.PathItems)
                 {
-                    Console.WriteLine("\tThrow Excepion in " + cpItem.Name + "-" + cpItem.Uuid);
+                    excludePathItems.TryAdd(int.Parse(item.Uuid), item);
+                    Console.WriteLine("~PathItem:" + item.Name + "-" + item.Uuid);
                 }
             });
             Parallel.ForEach(paths, pItem =>
             {
-                if (!excludePathItems.Contains(pItem))
+                if (!excludePathItems.ContainsKey(int.Parse(pItem.Uuid)))
                 {
                     Console.WriteLine("PathItem:" + pItem.Name + "-" + pItem.Uuid);
 
-                    RGBColor rc = null;
-                    bool catchE = false;
-                    try
-                    {
-                        rc = pItem.FillColor;
-                    }
-                    catch
-                    {
-                        catchE = true;
-                    }
-                    if (!catchE)
-                    {
-                        Console.WriteLine("\t- Adding ...");
-                        PolygonInfo pinfo = new PolygonInfo(from(pItem));
-                        ColorIndex ci = find(rc);
-                        if (ci == null)
-                        {
-                            ci = new ColorIndex(rc);
-                            colors.Add(ci);
-                        }
-                        pinfo.index = ci.index;
-                        polygons.Add(pinfo);
-                    } else
-                    {
+                    RGBColor rc = pItem.FillColor;
 
-                        Console.WriteLine("\tThrow Excepion in " + pItem.Name + "-" + pItem.Uuid);
+                    PolygonInfo pinfo = new PolygonInfo(from(pItem));
+                    ColorIndex ci = find(rc);
+                    if (ci is null)
+                    {
+                        ci = new ColorIndex(rc);
+                        colors.Add(ci);
                     }
+
+                    pinfo.index = ci.index;
+                    polygons.Add(pinfo);
+
                 }
             });
 
-            paths = null;
-            cpaths = null;
-            excludePathItems = null;
             Console.WriteLine(watch.Elapsed.TotalSeconds);
             Console.WriteLine("Numbering polygon");
 
@@ -344,7 +310,7 @@ namespace o_w1
                 //
 
             });
-
+            
             appRef.ExecuteMenuCommand("Fit Artboard to artwork bounds");
 
             double artX = docRef.Artboards[1].ArtboardRect[0] - 60.0,
@@ -373,7 +339,7 @@ namespace o_w1
 
             watch.Stop();
             Console.WriteLine(watch.Elapsed.TotalSeconds);
-
+            Console.ReadKey();
             return;
 
 
