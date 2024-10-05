@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ColorsToNumbers")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e8ca0f2ca340f5a6ae8b376a338992c4e390230b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+34934cbdf5447b7eb969610d10c9bb0026c6c658")]
 [assembly: System.Reflection.AssemblyProductAttribute("ColorsToNumbers")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ColorsToNumbers")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
