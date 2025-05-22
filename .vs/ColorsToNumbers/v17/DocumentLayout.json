@@ -22,11 +22,11 @@
           "Children": [
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
             },
             {
               "$type": "Document",
@@ -38,8 +38,7 @@
               "RelativeToolTip": "ColorsToNumbers.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2024-12-15T14:34:40.84Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-12-15T14:34:40.84Z"
             },
             {
               "$type": "Document",
@@ -49,7 +48,7 @@
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "C:\\Users\\NguyenVietLong\\Desktop\\Works\\_Github\\ColorsToNumbers\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAN4BAAAAAAAAAAAcwPIBAAAQAAAAAAAAAA==",
+              "ViewState": "AgIAANgBAAAAAAAAAAAgwPkBAAAQAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-10-02T15:29:49.882Z",
               "EditorCaption": ""
