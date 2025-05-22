@@ -5,6 +5,10 @@
     {
       "AbsoluteMoniker": "D:0:0:{5CF21D0B-2A59-4FE6-963F-58CD37D342B4}|ColorsToNumbers.csproj|c:\\users\\nguyenvietlong\\desktop\\works\\_github\\colorstonumbers\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5CF21D0B-2A59-4FE6-963F-58CD37D342B4}|ColorsToNumbers.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5CF21D0B-2A59-4FE6-963F-58CD37D342B4}|ColorsToNumbers.csproj|c:\\users\\nguyenvietlong\\desktop\\works\\_github\\colorstonumbers\\colorstonumbers.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{5CF21D0B-2A59-4FE6-963F-58CD37D342B4}|ColorsToNumbers.csproj|solutionrelative:colorstonumbers.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     }
   ],
   "DocumentGroupContainers": [
@@ -14,11 +18,28 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{40ea2e6b-2121-4bb8-a43e-c83c04b51041}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ColorsToNumbers.csproj",
+              "DocumentMoniker": "C:\\Users\\NguyenVietLong\\Desktop\\Works\\_Github\\ColorsToNumbers\\ColorsToNumbers.csproj",
+              "RelativeDocumentMoniker": "ColorsToNumbers.csproj",
+              "ToolTip": "C:\\Users\\NguyenVietLong\\Desktop\\Works\\_Github\\ColorsToNumbers\\ColorsToNumbers.csproj",
+              "RelativeToolTip": "ColorsToNumbers.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2024-12-15T14:34:40.84Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -28,7 +49,7 @@
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "C:\\Users\\NguyenVietLong\\Desktop\\Works\\_Github\\ColorsToNumbers\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AQIAAMoAAAAAAAAAAAAQwN8AAAAbAAAA",
+              "ViewState": "AgIAAN4BAAAAAAAAAAAcwPIBAAAQAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-10-02T15:29:49.882Z",
               "EditorCaption": ""
