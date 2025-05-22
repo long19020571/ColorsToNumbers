@@ -349,9 +349,11 @@ namespace o_w1
             mre2.Set();
 
             List<GroupItem> colorIndexItems = new List<GroupItem>();
+            List<double> colorAreas = new List<double>();
             for (int i = 0; i < colors.Count; ++i)
             {
                 colorIndexItems.Add(docRef.GroupItems.Add());
+                colorAreas.Add(0.0);
             }
 
 
@@ -376,6 +378,9 @@ namespace o_w1
                     adjust(ref gtf, ref plg.polygon, SCALE);
 
                     gtf.Move(colorIndexItems[plg.index -1], AiElementPlacement.aiPlaceInside);
+
+
+                    colorAreas[plg.index - 1] += plg.polygon.Area;
                     //
                     //
                 }
@@ -384,6 +389,13 @@ namespace o_w1
 
             appRef.ExecuteMenuCommand("Fit Artboard to artwork bounds");
 
+            double Area = colorAreas.Sum();
+            string textFile = "";
+            for (int i = 0; i < colorAreas.Count; ++i)
+            {
+                textFile += string.Format("Color {0}: {1} ({2} %)\n", i + 1, colorAreas[i], colorAreas[i] * 100 / Area);
+            }
+            File.WriteAllText("Area.txt", textFile);
             //
             mre.WaitOne();
             messege = "Draw label";
