@@ -12,7 +12,7 @@
       <WrapperTool>tlbimp</WrapperTool>
       <VersionMinor>0</VersionMinor>
       <VersionMajor>1</VersionMajor>
-      <Guid>d6752e03-199e-4fdc-973a-97e87d674e90</Guid>
+      <Guid>d241a9a6-1393-4270-80c1-f47212f7c9b7</Guid>
       <Lcid>0</Lcid>
       <Isolated>false</Isolated>
       <EmbedInteropTypes>true</EmbedInteropTypes>
@@ -21,6 +21,6 @@
 
   <ItemGroup>
     <PackageReference Include="NetTopologySuite" Version="2.5.0" />
+    <PackageReference Include="PDFsharp" Version="6.1.1" />
   </ItemGroup>
-
 </Project>

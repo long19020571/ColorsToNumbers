@@ -1,12 +1,14 @@
-﻿using System.Collections;
-using System.Collections.Concurrent;
-using System.Xml.XPath;
-using Illustrator;
+﻿using Illustrator;
 using NetTopologySuite.Geometries;
-using NetTopologySuite.Index.HPRtree;
+using PdfSharp.Drawing;
+using PdfSharp.Pdf;
+using System.Collections;
+//using System.Drawing;
+using System.Linq;
 
 namespace o_w1
 {
+    
     class ColorIndex
     {
         private static int _globalIndex = 1;
@@ -31,6 +33,7 @@ namespace o_w1
     }
     internal class ColorsToNumber2
     {
+        
         #region property
         private const int COUNT_CURVE_POINT = 5;
         private static GeometryFactory _geometryFactory = new GeometryFactory();
@@ -41,7 +44,7 @@ namespace o_w1
 
         private static Task update;
         private static string messege = "";
-        private static Stack<bool> process = new Stack<bool> ();
+        private static Stack<bool> process = new Stack<bool>();
         private static AutoResetEvent mre = new AutoResetEvent(false);
         private static AutoResetEvent mre2 = new AutoResetEvent(false);
         private static int processCount = 1;
@@ -58,7 +61,7 @@ namespace o_w1
         {
             update = Task.Run(() =>
             {
-                int p,c;
+                int p, c;
                 Console.CursorVisible = false;
                 while (!terminate)
                 {
@@ -77,7 +80,7 @@ namespace o_w1
                         Console.Write('░');
                     }
                     Console.Write("]\t" + p + "%");
-                    Console.WriteLine(string.Format("\nDone :{0}/{1}",c, processCount ));
+                    Console.WriteLine(string.Format("\nDone :{0}/{1}", c, processCount));
                     if (c >= processCount)
                     {
                         mre.Set();
@@ -153,13 +156,14 @@ namespace o_w1
         }
         public static bool reshape(ref Polygon plg, double SCALE)
         {
-            if (SCALE < 0){
+            if (SCALE < 0)
+            {
                 return false;
             }
             double midX = (plg.Coordinates[2].X + plg.Coordinates[0].X) / 2,
                    midY = (plg.Coordinates[2].Y + plg.Coordinates[0].Y) / 2,
-                   oldWidth2  = SCALE* Math.Abs(plg.Coordinates[2].X - plg.Coordinates[0].X)/2,
-                   oldHeight2 = SCALE * Math.Abs(plg.Coordinates[2].Y - plg.Coordinates[0].Y)/2;
+                   oldWidth2 = SCALE * Math.Abs(plg.Coordinates[2].X - plg.Coordinates[0].X) / 2,
+                   oldHeight2 = SCALE * Math.Abs(plg.Coordinates[2].Y - plg.Coordinates[0].Y) / 2;
 
             Coordinate[] newPlg =
             {
@@ -175,7 +179,8 @@ namespace o_w1
         }
         public static bool reshape(ref GroupItem gi, double SCALE)
         {
-            if (SCALE < 0){
+            if (SCALE < 0)
+            {
                 gi.Delete();
                 return false;
             }
@@ -190,7 +195,7 @@ namespace o_w1
 
             return true;
         }
-        public static void adjust(ref GroupItem gtf,ref Polygon plg, double SCALE)
+        public static void adjust(ref GroupItem gtf, ref Polygon plg, double SCALE)
         {
             Coordinate[] controlBound =
                 {
@@ -202,7 +207,7 @@ namespace o_w1
                     };
             Polygon num = _geometryFactory.CreatePolygon(controlBound);
             double scl = 1, sclw = plg.EnvelopeInternal.Width / num.EnvelopeInternal.Width, sclh = plg.EnvelopeInternal.Height / num.EnvelopeInternal.Height;
-            if(sclw < 1 || sclh < 1)
+            if (sclw < 1 || sclh < 1)
             {
                 scl = sclw < sclh ? sclw : sclh;
                 reshape(ref num, scl);
@@ -218,7 +223,7 @@ namespace o_w1
                     reshape(ref num, SCALE);
                     scl = scl * SCALE;
                 }
-                if(scl < MIN_SCALE_VALUE)
+                if (scl < MIN_SCALE_VALUE)
                 {
                     reshape(ref gtf, -1);
                     return;
@@ -226,72 +231,18 @@ namespace o_w1
             }
             reshape(ref gtf, scl);
         }
-        public static void adjust(GroupItem gtf, Polygon plg, Point iterior)
-        {
-        }
-        public static void adjust(GroupItem gtf, Polygon plg, int cWidthGrid, int cHeightGrid)
-        {
-            Envelope eplg = plg.EnvelopeInternal;
-            double deltaX = eplg.Width/ cWidthGrid,
-                deltaY = eplg.Height/ cHeightGrid;
 
-            BitArray[] grid = new BitArray[cWidthGrid];
-            for (int i = 0; i < cWidthGrid; ++i)
-            {
-                grid[i] = new BitArray(cHeightGrid, false);
-            }
-            for (int w = 0; w < cWidthGrid; w++)
-            {
-                for (int h = 0; h < cHeightGrid; h++)
-                {
-                    Point p = new Point(eplg.MinX + w*deltaX, eplg.MinY + h*deltaY);
-                    if (plg.Contains(p))
-                    {
-                        grid[w][h] = true;
-                    }
-                }
-            }
-            //find Fit rectangle
 
-        }
-        public static void findFit(BitArray[] bitArray, int width, int height, List<int> fitX, List<int> fitY)
-        {
-            int i, ii, j, jj;
-            bool check;
-            for(i = 0; i < bitArray.Length -width; i++)
-            {
-                for(j = 0; j < bitArray[i].Length -width; j++)
-                {
-                    check = true;
-                    for(ii = 0; ii < width & check; ii++)
-                    {
-                        for(jj = 0; jj < height & check; jj++)
-                        {
-                            if (!bitArray[ii][jj])
-                            {
-                                check = false;
-                            }
-                        }
-                    }
-                    if(check)
-                    {
-                        fitX.Add(i);
-                        fitY.Add(j);
-                    }
-                }
-            }
-
-        }
         public static void Main(string[] argvs)
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
+
 
             double SCALE = 0.9;
             Application appRef = new Application();
             Document docRef = appRef.ActiveDocument;
 
             int MinIndex = int.MaxValue, MaxIndex = int.MinValue, k;
-
             //
             messege = "Loading Compound Path Item";
             processCount = docRef.CompoundPathItems.Count;
@@ -323,16 +274,19 @@ namespace o_w1
             List<PathItem> paths = new List<PathItem>();
             foreach (PathItem pathItem in docRef.PathItems)
             {
-                if (pathItem.Filled && pathItem.Width > EPSILON && pathItem.Height > EPSILON)
+                try
                 {
-                    paths.Add(pathItem);
-                    k = int.Parse(pathItem.Uuid);
-                    if (k < MinIndex) MinIndex = k;
-                    if (k > MaxIndex) MaxIndex = k;
-                }
+                    if (pathItem.Filled && pathItem.Width > EPSILON && pathItem.Height > EPSILON)
+                    {
+                        paths.Add(pathItem);
+                        k = int.Parse(pathItem.Uuid);
+                        if (k < MinIndex) MinIndex = k;
+                        if (k > MaxIndex) MaxIndex = k;
+                    }
+                } catch { }
                 process.Push(true);
             }
-            k = MaxIndex - MinIndex +1;
+            k = MaxIndex - MinIndex + 1;
             polygons = new PolygonInfo[k];
             polygonsSet = new BitArray(k, true);
 
@@ -394,6 +348,13 @@ namespace o_w1
             process.Clear();
             mre2.Set();
 
+            List<GroupItem> colorIndexItems = new List<GroupItem>();
+            for (int i = 0; i < colors.Count; ++i)
+            {
+                colorIndexItems.Add(docRef.GroupItems.Add());
+            }
+
+
             Parallel.ForEach(polygons, plg =>
             {
                 if (plg is object)
@@ -412,7 +373,9 @@ namespace o_w1
 
                     gtf.Position = gtfP;
 
-                    adjust(ref gtf,ref plg.polygon, SCALE);
+                    adjust(ref gtf, ref plg.polygon, SCALE);
+
+                    gtf.Move(colorIndexItems[plg.index -1], AiElementPlacement.aiPlaceInside);
                     //
                     //
                 }
@@ -429,6 +392,9 @@ namespace o_w1
             process.Clear();
             mre2.Set();
 
+            List<PathItem> squares = new List<PathItem>();
+            List<GroupItem> groups = new List<GroupItem>();
+
             double artX = docRef.Artboards[1].ArtboardRect[0] - 60.0,
                 artY = docRef.Artboards[1].ArtboardRect[1];
             for (int i = 0; i < colors.Count; i++)
@@ -441,6 +407,8 @@ namespace o_w1
                     artY - 60*i
                 };
                 p.Position = ps;
+                squares.Add(p);
+
                 TextFrame tf = docRef.TextFrames.Add();
                 tf.Contents = colors.ElementAt(i).index.ToString();
                 GroupItem gtf = tf.CreateOutline();
@@ -451,8 +419,127 @@ namespace o_w1
                     artY - 15 + gtf.Height/2 - 60*i
                 };
                 gtf.Position = gtfs;
+                groups.Add(gtf);
+
                 process.Push(true);
             }
+            appRef.ExecuteMenuCommand("deselectall");
+            // export image
+            mre.WaitOne();
+            messege = "Export Image";
+            processCount = colors.Count +1;
+            curTop = curTop + 5;
+            process.Clear();
+            mre2.Set();
+
+            string storage = Directory.GetCurrentDirectory() + "\\MyFiles\\";
+
+            if (!Directory.Exists(storage))
+                Directory.CreateDirectory(storage);
+            docRef.SaveAs(storage + docRef.Name.Replace(".ai","_Saved.ai"));
+            string storagePNG = Directory.GetCurrentDirectory() + "\\MyFiles\\" + docRef.Name + "_Files\\";
+
+            if (!Directory.Exists(storagePNG))
+                Directory.CreateDirectory(storagePNG);
+
+            groups.ForEach(o => o.Delete());
+            squares.ForEach(o => o.Delete());
+
+            NoColor noColor = new NoColor();
+            ExportForScreensOptionsPNG24 exportForScreensOptions24;
+            ExportForScreensItemToExport exportForScreensItemToExport;
+            exportForScreensOptions24 = new ExportForScreensOptionsPNG24();
+            exportForScreensOptions24.ScaleType = AiExportForScreensScaleType.aiScaleByResolution;
+            exportForScreensOptions24.ScaleTypeValue = 300;
+            exportForScreensOptions24.Transparency = true;
+            exportForScreensItemToExport = new ExportForScreensItemToExport();
+            exportForScreensItemToExport.Document = true;
+            exportForScreensItemToExport.Artboards = null;
+
+            string saveFolder = docRef.Path.Remove(docRef.Path.LastIndexOf('\\') + 1);
+            //for (int i = colors.Count -1; i >= 0; --i)
+            //{
+            //    squares[i].Selected = true;
+            //    appRef.ExecuteMenuCommand("Find Fill Color menu item");
+            //    squares[i].Selected = false;
+            //    docRef.DefaultFillColor = noColor;
+            //    docRef.ExportForScreens(saveFolder + i + ".png", AiExportForScreensType.aiSE_PNG24, exportForScreensOptions24, exportForScreensItemToExport);
+
+            //}
+            docRef.ExportForScreens(storagePNG, AiExportForScreensType.aiSE_PNG24, exportForScreensOptions24, exportForScreensItemToExport, colors.Count.ToString("D4"));
+            colorIndexItems.ForEach(o => o.Hidden = true);
+            process.Push(true);
+
+
+            docRef.PathItems.Cast<PathItem>().AsParallel().ForAll(o =>
+            {
+                if (o.Filled && find(o.FillColor) != null)
+                {
+                    o.Stroked = true;
+                    o.StrokeWidth = 0.5;
+                    o.StrokeJoin = AiStrokeJoin.aiRoundEndJoin;
+                }
+            });
+
+            for (int i = colors.Count -1; i >= 0; --i)
+            {
+                appRef.ExecuteMenuCommand("selectall");
+                RGBColor color = colors[i].color;
+                docRef.PathItems.Cast<PathItem>().AsParallel().ForAll(o =>
+                {
+                    if (o.Filled && CompareColor(o.FillColor, color)){
+                        o.Selected = false;
+                    }
+                });
+                docRef.DefaultFillColor = noColor;
+                colorIndexItems[colors[i].index -1].Hidden = false;
+                docRef.ExportForScreens(storagePNG, AiExportForScreensType.aiSE_PNG24, exportForScreensOptions24, exportForScreensItemToExport, i.ToString("D4"));
+                appRef.Undo();
+                appRef.Undo();
+                process.Push(true);
+            }
+            List<string> imagePaths = Directory.GetFiles(storagePNG, "*.png", SearchOption.AllDirectories).ToList();
+            imagePaths.Sort();
+            //
+            mre.WaitOne();
+            messege = "Create PDF";
+            processCount = imagePaths.Count;
+            curTop = curTop + 5;
+            process.Clear();
+            mre2.Set();
+            using (PdfDocument pdf = new PdfDocument())
+            {
+                foreach (string imagePath in imagePaths)
+                {
+                    if (!File.Exists(imagePath))
+                    {
+                        Console.WriteLine($"File not found: {imagePath}");
+                        continue;
+                    }
+
+                    // Thêm một trang mới
+                    PdfPage page = pdf.AddPage();
+
+                    // Tạo đối tượng XGraphics để vẽ lên trang
+                    using (XGraphics gfx = XGraphics.FromPdfPage(page))
+                    {
+                        // Load hình ảnh
+                        using (XImage image = XImage.FromFile(imagePath))
+                        {
+                            // Đặt kích thước trang bằng kích thước của hình ảnh
+                            page.Width = image.PixelWidth * 72 / image.HorizontalResolution;
+                            page.Height = image.PixelHeight * 72 / image.VerticalResolution;
+
+                            // Vẽ hình ảnh lên toàn bộ trang
+                            gfx.DrawImage(image, 0, 0, page.Width, page.Height);
+                        }
+                    }
+                    process.Push(true);
+                }
+                pdf.Save(saveFolder + docRef.Name + ".pdf");
+
+            }
+
 
             mre.WaitOne();
             terminate = true;
