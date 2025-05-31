@@ -15,11 +15,18 @@ namespace o_w1
         private int _index;
         public int index { get { return _index; } }
         public RGBColor color;
+        public int Red { get { return (int)color.Red; } }
+        public int Green { get { return (int)color.Green; } }
+        public int Blue { get { return (int)color.Blue; } }
         public ColorIndex(RGBColor color)
         {
             _index = _globalIndex;
             ++_globalIndex;
             this.color = color;
+        }
+        public string ToString()
+        {
+            return string.Format("Color {0}: {1} ({2})", _index, Red + "," + Green + "," + Blue, index);
         }
     }
     class PolygonInfo
@@ -444,17 +451,22 @@ namespace o_w1
             process.Clear();
             mre2.Set();
 
-            string storage = Directory.GetCurrentDirectory() + "\\MyFiles\\";
+            string currentDirectory = Directory.GetCurrentDirectory();
+            string storage = currentDirectory + "\\MyFiles\\";
 
             if (!Directory.Exists(storage))
                 Directory.CreateDirectory(storage);
             docRef.SaveAs(storage + docRef.Name.Replace(".ai","_Saved.ai"));
-            string storagePNG = Directory.GetCurrentDirectory() + "\\MyFiles\\" + docRef.Name + "_Files\\";
+            string storagePNG = currentDirectory + "\\MyFiles\\" + docRef.Name + "_Files\\";
+            string imagePage0 = currentDirectory + "\\PDF_cover\\page0.png";
 
             if (!Directory.Exists(storagePNG))
                 Directory.CreateDirectory(storagePNG);
+            if (!Directory.Exists(currentDirectory + "\\PDF_cover\\"))
+                Directory.CreateDirectory(currentDirectory + "\\PDF_cover\\");
 
-            groups.ForEach(o => o.Delete());
+
+                groups.ForEach(o => o.Delete());
             squares.ForEach(o => o.Delete());
 
             NoColor noColor = new NoColor();
@@ -515,14 +527,45 @@ namespace o_w1
             //
             mre.WaitOne();
             messege = "Create PDF";
-            processCount = imagePaths.Count;
+            processCount = imagePaths.Count +2;
             curTop = curTop + 5;
             process.Clear();
             mre2.Set();
             using (PdfDocument pdf = new PdfDocument())
             {
-                foreach (string imagePath in imagePaths)
+                PdfPage page0 = pdf.AddPage();
+                page0.Size = PdfSharp.PageSize.A4;
+                page0.Orientation = PdfSharp.PageOrientation.Landscape;
+
+                // Đối tượng để vẽ
+                using (XGraphics gfx = XGraphics.FromPdfPage(page0))
                 {
+
+                    // Load ảnh
+                    using (XImage image = XImage.FromFile(imagePage0))
+                    {
+                        // Tính tỉ lệ để fit vào trang A4 (giữ nguyên tỉ lệ)
+                        double ratioX = page0.Width / image.PixelWidth;
+                        double ratioY = page0.Height / image.PixelHeight;
+                        double scale = Math.Min(ratioX, ratioY);
+
+                        // Kích thước mới
+                        double newWidth = image.PixelWidth * scale;
+                        double newHeight = image.PixelHeight * scale;
+
+                        // Vị trí căn giữa ảnh
+                        double x = (page0.Width - newWidth) / 2;
+                        double y = (page0.Height - newHeight) / 2;
+
+                        // Vẽ ảnh
+                        gfx.DrawImage(image, x, y, newWidth, newHeight);
+                    }
+                    process.Push(true);
+                }
+
+                for (int i = 0; i < imagePaths.Count; ++i)
+                {
+                    string imagePath = imagePaths[i];
                     if (!File.Exists(imagePath))
                     {
                         Console.WriteLine($"File not found: {imagePath}");
@@ -531,19 +574,34 @@ namespace o_w1
 
                     // Thêm một trang mới
                     PdfPage page = pdf.AddPage();
+                    page.Size = PdfSharp.PageSize.A4;
+                    page.Orientation = PdfSharp.PageOrientation.Landscape;
+
 
                     // Tạo đối tượng XGraphics để vẽ lên trang
                     using (XGraphics gfx = XGraphics.FromPdfPage(page))
                     {
+                        string header = "Color #" + (i + 1).ToString();
+                        gfx.DrawString(header, new XFont("", 14), XBrushes.Black,
+                                            new XRect(0, 30, page.Width, 30),
+                                            new XStringFormat { Alignment = XStringAlignment.Center, LineAlignment = XLineAlignment.Center });
                         // Load hình ảnh
                         using (XImage image = XImage.FromFile(imagePath))
                         {
-                            // Đặt kích thước trang bằng kích thước của hình ảnh
-                            page.Width = image.PixelWidth * 72 / image.HorizontalResolution;
-                            page.Height = image.PixelHeight * 72 / image.VerticalResolution;
+                            double ratioX = page.Width / image.PixelWidth;
+                            double ratioY = page.Height / image.PixelHeight;
+                            double scale = Math.Min(ratioX, ratioY);
 
-                            // Vẽ hình ảnh lên toàn bộ trang
-                            gfx.DrawImage(image, 0, 0, page.Width, page.Height);
+                            // Kích thước mới
+                            double newWidth = image.PixelWidth * scale;
+                            double newHeight = image.PixelHeight * scale;
+
+                            // Vị trí căn giữa ảnh
+                            double x = (page.Width - newWidth) / 2;
+                            double y = (page.Height - newHeight) / 2;
+
+                            // Vẽ ảnh
+                            gfx.DrawImage(image, x, y, newWidth, newHeight);
                         }
                     }
                     process.Push(true);
@@ -551,7 +609,41 @@ namespace o_w1
                 pdf.Save(saveFolder + docRef.Name + ".pdf");
 
             }
+            using (PdfDocument pdf = new PdfDocument())
+            {
+                PdfPage page0 = pdf.AddPage();
+                page0.Size = PdfSharp.PageSize.A4;
+                page0.Orientation = PdfSharp.PageOrientation.Landscape;
+                // Đối tượng để vẽ
+                using (XGraphics gfx = XGraphics.FromPdfPage(page0))
+                {
+                    XFont font = new XFont("", 12);
 
+                    double marginTop = 50;
+                    double rowHeight = 40;
+                    double rectWidth = 100;
+                    double spacing = 10;
+
+                    for (int i = 0; i < colors.Count; i++)
+                    {
+                        ColorIndex color = colors[i];
+                        double y = marginTop + i * (rowHeight + spacing);
+
+                        // Chuyển System.Drawing.Color → PdfSharp XColor
+                        XColor xcolor = XColor.FromArgb(color.Red, color.Green, color.Blue);
+                        XSolidBrush brush = new XSolidBrush(xcolor);
+
+                        // Vẽ hình chữ nhật màu
+                        gfx.DrawRectangle(brush, 50, y, rectWidth, rowHeight);
+
+                        // Vẽ text bên cạnh hình chữ nhật
+                        gfx.DrawString(color.ToString(), font, XBrushes.Black, 50 + rectWidth + 20, y + rowHeight / 2,
+                            new XStringFormat { LineAlignment = XLineAlignment.Center });
+                    }
+                    process.Push(true);
+                }
+                pdf.Save(saveFolder + "Colors.pdf");
+            }
 
             mre.WaitOne();
             terminate = true;
