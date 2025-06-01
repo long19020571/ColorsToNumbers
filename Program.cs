@@ -1,10 +1,9 @@
 ﻿using Illustrator;
 using NetTopologySuite.Geometries;
 using PdfSharp.Drawing;
+using PdfSharp.Fonts;
 using PdfSharp.Pdf;
 using System.Collections;
-//using System.Drawing;
-using System.Linq;
 
 namespace o_w1
 {
@@ -26,7 +25,7 @@ namespace o_w1
         }
         public string ToString()
         {
-            return string.Format("Color {0}: {1} ({2})", _index, Red + "," + Green + "," + Blue, index);
+            return string.Format("({0},{1},{2})", Red ,Green,Blue);
         }
     }
     class PolygonInfo
@@ -396,13 +395,13 @@ namespace o_w1
 
             appRef.ExecuteMenuCommand("Fit Artboard to artwork bounds");
 
-            double Area = colorAreas.Sum();
-            string textFile = "";
-            for (int i = 0; i < colorAreas.Count; ++i)
-            {
-                textFile += string.Format("Color {0}: {1} ({2} %)\n", i + 1, colorAreas[i], colorAreas[i] * 100 / Area);
-            }
-            File.WriteAllText("Area.txt", textFile);
+            //double Area = colorAreas.Sum();
+            //string textFile = "";
+            //for (int i = 0; i < colorAreas.Count; ++i)
+            //{
+            //    textFile += string.Format("Color {0}: {1} ({2} %)\n", i + 1, colorAreas[i], colorAreas[i] * 100 / Area);
+            //}
+            //File.WriteAllText("Area.txt", textFile);
             //
             mre.WaitOne();
             messege = "Draw label";
@@ -466,7 +465,7 @@ namespace o_w1
                 Directory.CreateDirectory(currentDirectory + "\\PDF_cover\\");
 
 
-                groups.ForEach(o => o.Delete());
+            groups.ForEach(o => o.Delete());
             squares.ForEach(o => o.Delete());
 
             NoColor noColor = new NoColor();
@@ -527,7 +526,7 @@ namespace o_w1
             //
             mre.WaitOne();
             messege = "Create PDF";
-            processCount = imagePaths.Count +2;
+            processCount = imagePaths.Count +1;
             curTop = curTop + 5;
             process.Clear();
             mre2.Set();
@@ -535,35 +534,34 @@ namespace o_w1
             {
                 PdfPage page0 = pdf.AddPage();
                 page0.Size = PdfSharp.PageSize.A4;
-                page0.Orientation = PdfSharp.PageOrientation.Landscape;
+                page0.Orientation = PdfSharp.PageOrientation.Portrait;
 
-                // Đối tượng để vẽ
+                // Lấy đối tượng để vẽ
                 using (XGraphics gfx = XGraphics.FromPdfPage(page0))
                 {
 
-                    // Load ảnh
-                    using (XImage image = XImage.FromFile(imagePage0))
-                    {
-                        // Tính tỉ lệ để fit vào trang A4 (giữ nguyên tỉ lệ)
-                        double ratioX = page0.Width / image.PixelWidth;
-                        double ratioY = page0.Height / image.PixelHeight;
-                        double scale = Math.Min(ratioX, ratioY);
+                    // Load ảnh (PNG, JPG, BMP)
+                    XImage image = XImage.FromFile(imagePage0);
 
-                        // Kích thước mới
-                        double newWidth = image.PixelWidth * scale;
-                        double newHeight = image.PixelHeight * scale;
 
-                        // Vị trí căn giữa ảnh
-                        double x = (page0.Width - newWidth) / 2;
-                        double y = (page0.Height - newHeight) / 2;
+                    double scaleX = page0.Width / image.PixelWidth;
+                    double scaleY = page0.Height / image.PixelHeight;
+                    double scale = Math.Min(scaleX, scaleY); // Giữ nguyên tỉ lệ
 
-                        // Vẽ ảnh
-                        gfx.DrawImage(image, x, y, newWidth, newHeight);
-                    }
+                    double drawWidth = image.PixelWidth * scale;
+                    double drawHeight = image.PixelHeight * scale;
+
+                    // Căn giữa ảnh
+                    double x = (page0.Width - drawWidth) / 2;
+                    double y = (page0.Height - drawHeight) / 2;
+
+                    // Vẽ ảnh
+                    gfx.DrawImage(image, x, y, drawWidth, drawHeight);
                     process.Push(true);
                 }
 
-                for (int i = 0; i < imagePaths.Count; ++i)
+                GlobalFontSettings.UseWindowsFontsUnderWindows = true;
+                for (int i = 0; i < imagePaths.Count -1; ++i)
                 {
                     string imagePath = imagePaths[i];
                     if (!File.Exists(imagePath))
@@ -575,14 +573,14 @@ namespace o_w1
                     // Thêm một trang mới
                     PdfPage page = pdf.AddPage();
                     page.Size = PdfSharp.PageSize.A4;
-                    page.Orientation = PdfSharp.PageOrientation.Landscape;
+                    page.Orientation = PdfSharp.PageOrientation.Portrait;
 
 
                     // Tạo đối tượng XGraphics để vẽ lên trang
                     using (XGraphics gfx = XGraphics.FromPdfPage(page))
                     {
                         string header = "Color #" + (i + 1).ToString();
-                        gfx.DrawString(header, new XFont("", 14), XBrushes.Black,
+                        gfx.DrawString(header, new XFont("Arial", 14), XBrushes.Black,
                                             new XRect(0, 30, page.Width, 30),
                                             new XStringFormat { Alignment = XStringAlignment.Center, LineAlignment = XLineAlignment.Center });
                         // Load hình ảnh
@@ -613,17 +611,19 @@ namespace o_w1
             {
                 PdfPage page0 = pdf.AddPage();
                 page0.Size = PdfSharp.PageSize.A4;
-                page0.Orientation = PdfSharp.PageOrientation.Landscape;
                 // Đối tượng để vẽ
                 using (XGraphics gfx = XGraphics.FromPdfPage(page0))
                 {
-                    XFont font = new XFont("", 12);
+                    XFont font = new XFont("Arial", 12);
 
                     double marginTop = 50;
                     double rowHeight = 40;
                     double rectWidth = 100;
                     double spacing = 10;
 
+                    double totalHeight = marginTop + colors.Count * (rowHeight + spacing);
+                    
+                    page0.Height = totalHeight;
                     for (int i = 0; i < colors.Count; i++)
                     {
                         ColorIndex color = colors[i];
@@ -637,7 +637,9 @@ namespace o_w1
                         gfx.DrawRectangle(brush, 50, y, rectWidth, rowHeight);
 
                         // Vẽ text bên cạnh hình chữ nhật
-                        gfx.DrawString(color.ToString(), font, XBrushes.Black, 50 + rectWidth + 20, y + rowHeight / 2,
+                        double Area = colorAreas.Sum();
+                        string info = string.Format("Color {0} = {1}: Area = {2:F4} ({3:F4} %)\n", i + 1, color.ToString(), colorAreas[i], colorAreas[i] * 100 / Area);
+                        gfx.DrawString(info, font, XBrushes.Black, 50 + rectWidth + 20, y + rowHeight / 2,
                             new XStringFormat { LineAlignment = XLineAlignment.Center });
                     }
                     process.Push(true);
