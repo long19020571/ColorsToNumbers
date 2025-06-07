@@ -1,5 +1,6 @@
 ﻿using Illustrator;
 using NetTopologySuite.Geometries;
+using NetTopologySuite.Index.HPRtree;
 using PdfSharp.Drawing;
 using PdfSharp.Fonts;
 using PdfSharp.Pdf;
@@ -304,6 +305,9 @@ namespace o_w1
             process.Clear();
             mre2.Set();
 
+
+            List<GroupItem> polygonIndexItems = new List<GroupItem>();
+
             Parallel.ForEach(cpaths, cpItem =>
             {
                 RGBColor rc = cpItem.PathItems[1].FillColor;
@@ -314,8 +318,10 @@ namespace o_w1
                 {
                     ci = new ColorIndex(rc);
                     colors.Add(ci);
+                    polygonIndexItems.Add(docRef.GroupItems.Add());
                 }
                 pinfo.index = ci.index;
+                cpItem.Move(polygonIndexItems[ci.index -1], AiElementPlacement.aiPlaceInside);
                 polygons[int.Parse(cpItem.Uuid) - MinIndex] = pinfo;
 
                 foreach (PathItem item in cpItem.PathItems)
@@ -337,9 +343,11 @@ namespace o_w1
                     {
                         ci = new ColorIndex(rc);
                         colors.Add(ci);
+                        polygonIndexItems.Add(docRef.GroupItems.Add());
                     }
 
                     pinfo.index = ci.index;
+                    pItem.Move(polygonIndexItems[ci.index -1], AiElementPlacement.aiPlaceInside);
                     polygons[int.Parse(pItem.Uuid) - MinIndex] = pinfo;
 
                 }
@@ -355,6 +363,7 @@ namespace o_w1
             mre2.Set();
 
             List<GroupItem> colorIndexItems = new List<GroupItem>();
+
             List<double> colorAreas = new List<double>();
             for (int i = 0; i < colors.Count; ++i)
             {
@@ -439,6 +448,9 @@ namespace o_w1
                 gtf.Position = gtfs;
                 groups.Add(gtf);
 
+                // create group color shape item - polygonIndexItems
+
+
                 process.Push(true);
             }
             appRef.ExecuteMenuCommand("deselectall");
@@ -457,7 +469,7 @@ namespace o_w1
                 Directory.CreateDirectory(storage);
             docRef.SaveAs(storage + docRef.Name.Replace(".ai","_Saved.ai"));
             string storagePNG = currentDirectory + "\\MyFiles\\" + docRef.Name + "_Files\\";
-            string imagePage0 = currentDirectory + "\\PDF_cover\\page0.png";
+            string imageCovers = currentDirectory + "\\PDF_cover\\";
 
             if (!Directory.Exists(storagePNG))
                 Directory.CreateDirectory(storagePNG);
@@ -490,7 +502,7 @@ namespace o_w1
 
             //}
             docRef.ExportForScreens(storagePNG, AiExportForScreensType.aiSE_PNG24, exportForScreensOptions24, exportForScreensItemToExport, colors.Count.ToString("D4"));
-            colorIndexItems.ForEach(o => o.Hidden = true);
+            colorIndexItems.ForEach(o => o.Hidden = false);
             process.Push(true);
 
 
@@ -506,23 +518,26 @@ namespace o_w1
 
             for (int i = colors.Count -1; i >= 0; --i)
             {
-                appRef.ExecuteMenuCommand("selectall");
-                RGBColor color = colors[i].color;
-                docRef.PathItems.Cast<PathItem>().AsParallel().ForAll(o =>
+                appRef.ExecuteMenuCommand("deselectall");
+                for (int j = 0; j < colors.Count; ++j)
                 {
-                    if (o.Filled && CompareColor(o.FillColor, color)){
-                        o.Selected = false;
+                    if (j != i)
+                    {
+                        polygonIndexItems[j].Selected = true;
                     }
-                });
+                }
                 docRef.DefaultFillColor = noColor;
-                colorIndexItems[colors[i].index -1].Hidden = false;
+                //colorIndexItems[colors[i].index -1].Hidden = false;
                 docRef.ExportForScreens(storagePNG, AiExportForScreensType.aiSE_PNG24, exportForScreensOptions24, exportForScreensItemToExport, i.ToString("D4"));
                 appRef.Undo();
-                appRef.Undo();
+                //appRef.Undo();
                 process.Push(true);
             }
             List<string> imagePaths = Directory.GetFiles(storagePNG, "*.png", SearchOption.AllDirectories).ToList();
+            List<string> imageCoversPaths = Directory.GetFiles(imageCovers, "*.png", SearchOption.AllDirectories).ToList();
+
             imagePaths.Sort();
+            imageCoversPaths.Sort();
             //
             mre.WaitOne();
             messege = "Create PDF";
@@ -532,33 +547,37 @@ namespace o_w1
             mre2.Set();
             using (PdfDocument pdf = new PdfDocument())
             {
-                PdfPage page0 = pdf.AddPage();
-                page0.Size = PdfSharp.PageSize.A4;
-                page0.Orientation = PdfSharp.PageOrientation.Portrait;
-
-                // Lấy đối tượng để vẽ
-                using (XGraphics gfx = XGraphics.FromPdfPage(page0))
+                foreach(string path in imageCoversPaths)
                 {
+                    PdfPage page0 = pdf.AddPage();
+                    page0.Size = PdfSharp.PageSize.A4;
+                    page0.Orientation = PdfSharp.PageOrientation.Portrait;
 
-                    // Load ảnh (PNG, JPG, BMP)
-                    XImage image = XImage.FromFile(imagePage0);
+                    // Lấy đối tượng để vẽ
+                    using (XGraphics gfx = XGraphics.FromPdfPage(page0))
+                    {
+
+                        // Load ảnh (PNG, JPG, BMP)
+                        XImage image = XImage.FromFile(path);
 
 
-                    double scaleX = page0.Width / image.PixelWidth;
-                    double scaleY = page0.Height / image.PixelHeight;
-                    double scale = Math.Min(scaleX, scaleY); // Giữ nguyên tỉ lệ
+                        double scaleX = page0.Width / image.PixelWidth;
+                        double scaleY = page0.Height / image.PixelHeight;
+                        double scale = Math.Min(scaleX, scaleY); // Giữ nguyên tỉ lệ
 
-                    double drawWidth = image.PixelWidth * scale;
-                    double drawHeight = image.PixelHeight * scale;
+                        double drawWidth = image.PixelWidth * scale;
+                        double drawHeight = image.PixelHeight * scale;
 
-                    // Căn giữa ảnh
-                    double x = (page0.Width - drawWidth) / 2;
-                    double y = (page0.Height - drawHeight) / 2;
+                        // Căn giữa ảnh
+                        double x = (page0.Width - drawWidth) / 2;
+                        double y = (page0.Height - drawHeight) / 2;
 
-                    // Vẽ ảnh
-                    gfx.DrawImage(image, x, y, drawWidth, drawHeight);
-                    process.Push(true);
+                        // Vẽ ảnh
+                        gfx.DrawImage(image, x, y, drawWidth, drawHeight);
+                        process.Push(true);
+                    }
                 }
+                
 
                 GlobalFontSettings.UseWindowsFontsUnderWindows = true;
                 for (int i = 0; i < imagePaths.Count -1; ++i)
@@ -577,6 +596,7 @@ namespace o_w1
 
 
                     // Tạo đối tượng XGraphics để vẽ lên trang
+                    double margin = 40;
                     using (XGraphics gfx = XGraphics.FromPdfPage(page))
                     {
                         string header = "Color #" + (i + 1).ToString();
@@ -586,8 +606,8 @@ namespace o_w1
                         // Load hình ảnh
                         using (XImage image = XImage.FromFile(imagePath))
                         {
-                            double ratioX = page.Width / image.PixelWidth;
-                            double ratioY = page.Height / image.PixelHeight;
+                            double ratioX = (page.Width - 2 * margin)/ image.PixelWidth;
+                            double ratioY = (page.Height - 2 * margin)/ image.PixelHeight;
                             double scale = Math.Min(ratioX, ratioY);
 
                             // Kích thước mới
@@ -638,7 +658,7 @@ namespace o_w1
 
                         // Vẽ text bên cạnh hình chữ nhật
                         double Area = colorAreas.Sum();
-                        string info = string.Format("Color {0} = {1}: Area = {2:F4} ({3:F4} %)\n", i + 1, color.ToString(), colorAreas[i], colorAreas[i] * 100 / Area);
+                        string info = string.Format("Color {0} = {1}: Area = {2:F4} ({3:F4} %)", i + 1, color.ToString(), colorAreas[i], colorAreas[i] * 100 / Area);
                         gfx.DrawString(info, font, XBrushes.Black, 50 + rectWidth + 20, y + rowHeight / 2,
                             new XStringFormat { LineAlignment = XLineAlignment.Center });
                     }
