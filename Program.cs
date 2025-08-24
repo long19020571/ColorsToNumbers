@@ -232,7 +232,6 @@ namespace o_w1
             reshape(ref gtf, scl);
         }
 
-
         public static void Main(string[] argvs)
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -241,6 +240,11 @@ namespace o_w1
             double SCALE = 0.9;
             Application appRef = new Application();
             Document docRef = appRef.ActiveDocument;
+            appRef.ExecuteMenuCommand("selectall");
+            appRef.ExecuteMenuCommand("Colors9");
+            appRef.ExecuteMenuCommand("deselectall");
+
+
 
             int MinIndex = int.MaxValue, MaxIndex = int.MinValue, k;
             //
@@ -476,7 +480,7 @@ namespace o_w1
                 if (o.Filled && find(o.FillColor) != null)
                 {
                     o.Stroked = true;
-                    o.StrokeWidth = 0.5;
+                    o.StrokeWidth = 0.25;
                     o.StrokeJoin = AiStrokeJoin.aiRoundEndJoin;
                 }
             });
