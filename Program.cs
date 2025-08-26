@@ -1,4 +1,4 @@
-﻿using Illustrator;
+using Illustrator;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Index.HPRtree;
 using PdfSharp.Drawing;
@@ -248,6 +248,11 @@ namespace o_w1
             double SCALE = 0.9;
             Application appRef = new Application();
             Document docRef = appRef.ActiveDocument;
+
+            appRef.ExecuteMenuCommand("selectall");
+            appRef.ExecuteMenuCommand("Colors9");
+            appRef.ExecuteMenuCommand("deselectall");
+
 
             int MinIndex = int.MaxValue, MaxIndex = int.MinValue, k;
             //
@@ -511,7 +516,7 @@ namespace o_w1
                 if (o.Filled && find(o.FillColor) != null)
                 {
                     o.Stroked = true;
-                    o.StrokeWidth = 0.5;
+                    o.StrokeWidth = 0.25;
                     o.StrokeJoin = AiStrokeJoin.aiRoundEndJoin;
                 }
             });
@@ -541,7 +546,7 @@ namespace o_w1
             //
             mre.WaitOne();
             messege = "Create PDF";
-            processCount = imagePaths.Count +1;
+            processCount = imagePaths.Count + imageCoversPaths.Count;
             curTop = curTop + 5;
             process.Clear();
             mre2.Set();
